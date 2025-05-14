@@ -1,8 +1,27 @@
 import sys
 from fastaread import read
+from typing import List, Dict
+import time
 
 
-def find_all(text: str, pattern: str, limit: int = -1):
+def find_all_naive(text: str, pattern: str, limit: int = -1) -> List[int]:
+    matches = []
+
+    pos = 0
+    found = True
+    limit_reached = False
+    while found and not limit_reached:
+        match = text.find(pattern, pos)
+        found = match != -1
+        if found:
+            matches.append(match)
+            pos = match + 1
+        limit_reached = limit != -1 and len(matches) >= limit
+
+    return matches
+
+
+def find_all_bm(text: str, pattern: str, limit: int = -1) -> List[int]:
     """
     Finds all occurrences of *pattern* in *text* using the Boyer-Moore algorithm.
 
@@ -36,7 +55,7 @@ def find_all(text: str, pattern: str, limit: int = -1):
         else:
             mismatched_character = text[inner_text_pos]
             bcr_step = bcr(mismatched_character, pattern_pos, bcr_table)
-            gsr_step = 1  # TODO:
+            gsr_step = gsr(pattern_pos, gsr_table)
             step = max(bcr_step, gsr_step)
         outer_text_pos += step
 
@@ -44,17 +63,17 @@ def find_all(text: str, pattern: str, limit: int = -1):
     return matches
 
 
-def bcr(char: str, idx: int, bcr_table) -> int:
+def bcr(char: str, idx: int, bcr_table: Dict) -> int:
     return bcr_table[idx, char]
 
 
-def gcr():
-    pass
+def gsr(pattern_pos: int, gsr_table: List[int]) -> int:
+    return gsr_table[pattern_pos + 1]
 
 
-def compute_bcr_table(pattern: str, alphabet=None):
+def compute_bcr_table(pattern: str, alphabet=None) -> Dict:
     """
-    The computed table stores offsets for each index *i* in the pattern, addressing next occurrance of a character *c* within the pattern when looking to the left of *i*.
+    The computed table stores offsets for each index *i* in the pattern, addressing next occurrence of a character *c* within the pattern when looking to the left of *i*.
 
     It can be accessed like this: table[i, c]
     """
@@ -62,22 +81,35 @@ def compute_bcr_table(pattern: str, alphabet=None):
         alphabet = list(set(pattern))
 
     bcr_table = {}
-    # bcr_table = [[0 for j in len(alphabet)] for i in len(pattern)]
 
-    for idx in range(len(pattern)):
+    for pattern_idx in range(len(pattern)):
         for char in alphabet:
-            left_occurrence_idx = pattern.rfind(char, 0, idx)
-            if left_occurrence_idx == -1:  # not found
-                bcr_table[idx, char] = 0
+            left_occurrence_idx = pattern.rfind(char, 0, pattern_idx)
+            if left_occurrence_idx == -1:  # not found -> we can skip the entire part left of the current position in the pattern
+                bcr_table[pattern_idx, char] = pattern_idx + 1
             else:
-                bcr_table[idx, char] = idx - left_occurrence_idx
+                bcr_table[pattern_idx,
+                          char] = pattern_idx - left_occurrence_idx
 
     return bcr_table
 
 
-def compute_gsr_table():
+def compute_gsr_table(pattern: str) -> List[int]:
+    gsr_table = [1 for i in range(len(pattern) + 1)]
 
-    pass
+    half = len(pattern) // 2  # we won't find pattern P in T if |T| < |P|
+    for suffix_idx in range(half, len(pattern)):
+        suffix = pattern[suffix_idx:]
+        match_idx = pattern.rfind(suffix, 0, suffix_idx)
+        found = match_idx == -1
+        if found:
+            if not pattern[match_idx - 1] == pattern[suffix_idx - 1]:
+                offset = suffix_idx - match_idx
+                gsr_table[suffix_idx] = offset
+        else:
+            gsr_table[suffix_idx] = 1
+
+    return gsr_table
 
 
 def main():
@@ -88,8 +120,22 @@ def main():
     patterns = read(pattern_file)
 
     for pattern in patterns:
-        occurrences = find_all(text, pattern, limit=10)
-        print(*occurrences, sep=' / ')
+        # naive_start = time.time()
+        # naive_occurrences = find_all_naive(text, pattern, limit=10)
+        # naive_end = time.time()
+
+        # print("Time (Naive): " + str(naive_end - naive_start))
+
+        # bm_start = time.time()
+        bm_occurrences = find_all_bm(text, pattern, limit=10)
+        # bm_end = time.time()
+        # print("Time (BM): " + str(bm_end - bm_start))
+
+        # print("Matching Results? (Naive and BM): " +
+        #       str(bm_occurrences == naive_occurrences))
+
+        # print(*naive_occurrences, sep=' / ')
+        print(*bm_occurrences, sep=' / ')
 
 
 if __name__ == "__main__":
