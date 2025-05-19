@@ -1,6 +1,6 @@
 import sys
 from fastaread import read
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import time
 
 
@@ -21,11 +21,13 @@ def find_all_naive(text: str, pattern: str, limit: int = -1) -> List[int]:
     return matches
 
 
-def find_all_bm(text: str, pattern: str, limit: int = -1) -> List[int]:
+def find_all_bm(text: str,
+                pattern: str,
+                limit: int = -1) -> Tuple[List[int], int]:
     """
     Finds all occurrences of *pattern* in *text* using the Boyer-Moore algorithm.
 
-    Returns a list of indices to those occurrences.
+    Returns a list of indices to those occurrences and an int equal to the number of times the bad-character-rule was applied.
     """
     alphabet = list(set(text))
     bcr_table = compute_bcr_table(pattern, alphabet=alphabet)
@@ -33,6 +35,7 @@ def find_all_bm(text: str, pattern: str, limit: int = -1) -> List[int]:
     pattern_len = len(pattern)
     text_len = len(text)
 
+    bcr_applications = 0
     matches = []
 
     outer_text_pos = pattern_len - 1
@@ -57,10 +60,12 @@ def find_all_bm(text: str, pattern: str, limit: int = -1) -> List[int]:
             bcr_step = bcr(mismatched_character, pattern_pos, bcr_table)
             gsr_step = gsr(pattern_pos, gsr_table)
             step = max(bcr_step, gsr_step)
+            if bcr_step == step:
+                bcr_applications += 1
         outer_text_pos += step
 
         limit_reached = limit != -1 and len(matches) >= limit
-    return matches
+    return matches, bcr_applications
 
 
 def bcr(char: str, idx: int, bcr_table: Dict) -> int:
@@ -127,7 +132,7 @@ def main():
         # print("Time (Naive): " + str(naive_end - naive_start))
 
         # bm_start = time.time()
-        bm_occurrences = find_all_bm(text, pattern, limit=10)
+        bm_occurrences, bcr_applications = find_all_bm(text, pattern, limit=10)
         # bm_end = time.time()
         # print("Time (BM): " + str(bm_end - bm_start))
 
@@ -135,7 +140,8 @@ def main():
         #       str(bm_occurrences == naive_occurrences))
 
         # print(*naive_occurrences, sep=' / ')
-        print(*bm_occurrences, sep=' / ')
+        results = [bcr_applications] + bm_occurrences
+        print(*results, sep=' / ')
 
 
 if __name__ == "__main__":
