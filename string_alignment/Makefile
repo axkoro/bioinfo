@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -O2 -std=c++11
+CXXFLAGS = -march=native -Wall -O3 -std=c++17
 
 SRCS = localalign.cpp
 
