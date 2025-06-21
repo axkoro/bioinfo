@@ -18,7 +18,10 @@ int main(int argc, char const* argv[]) {
   std::string matrix_path = argv[2];
   ScoringMatrix mat(matrix_path);
 
-  compute_guidetree(sequences, mat);
+  GuidetreeResult result = compute_guidetree(sequences, mat);
+
+  std::cout << result.similarity_matrix << std::endl;
+  std::cout << result.guidetree_steps;
 
   return 0;
 }

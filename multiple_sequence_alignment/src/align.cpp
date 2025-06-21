@@ -140,36 +140,43 @@ int needleman_wunsch(const std::string& seq1, const std::string& seq2, const Sco
   return similarity_matrix(num_rows, num_cols);
 }
 
-void compute_guidetree(const std::vector<Sequence>& sequences, const ScoringMatrix& mat) {
+GuidetreeResult compute_guidetree(const std::vector<Sequence>& sequences,
+                                  const ScoringMatrix& mat) {
+  GuidetreeResult result;
   size_t num_sequences = sequences.size();
-  if (num_sequences <= 1) return;
 
-  // Compute and print the initial pairwise similarity matrix
+  if (num_sequences <= 1) return result;
+
+  std::stringstream matrix_ss;
+  std::stringstream steps_ss;
+
   Matrix<int> sim_matrix(num_sequences, num_sequences);
-  std::cout << std::left << std::setw(8) << "";
-  for (const auto& seq : sequences) {
-    std::cout << std::setw(8) << seq.header;
-  }
-  std::cout << std::endl;
 
+  // Build matrix header
+  matrix_ss << std::left << std::setw(8) << "";
+  for (const auto& seq : sequences) {
+    matrix_ss << std::setw(8) << seq.header;
+  }
+  matrix_ss << std::endl;
+
+  // Build matrix rows
   for (size_t i = 0; i < num_sequences; i++) {
-    std::cout << std::setw(8) << sequences[i].header;
+    matrix_ss << std::setw(8) << sequences[i].header;
     for (size_t j = 0; j < num_sequences; j++) {
       if (j < i) {
-        std::cout << std::setw(8) << "";
+        matrix_ss << std::setw(8) << "";
       } else if (i == j) {
         sim_matrix(i, j) = std::numeric_limits<double>::min();  // to prevent self-merging
-        std::cout << std::setw(8) << "";
+        matrix_ss << std::setw(8) << "";
       } else {  // j > i (right of matrix diagonal)
         int sim_score = needleman_wunsch(sequences[i].data, sequences[j].data, mat);
         sim_matrix(i, j) = sim_score;
         sim_matrix(j, i) = sim_score;
-        std::cout << std::setw(8) << sim_score;
+        matrix_ss << std::setw(8) << sim_score;
       }
     }
-    std::cout << std::endl;
+    matrix_ss << std::endl;
   }
-  std::cout << std::endl;
 
   // Hierarchical clustering
   std::vector<std::string> node_labels(num_sequences);
@@ -198,8 +205,6 @@ void compute_guidetree(const std::vector<Sequence>& sequences, const ScoringMatr
       }
     }
 
-    // if (max_sim == std::numeric_limits<double>::min()) break;
-
     // Output the merge in alphabetical order of labels
     std::string label_i = node_labels[best_i];
     std::string label_j = node_labels[best_j];
@@ -209,7 +214,7 @@ void compute_guidetree(const std::vector<Sequence>& sequences, const ScoringMatr
       std::swap(best_i, best_j);
     }
 
-    std::cout << "(" << label_i << "," << label_j << ")" << std::endl;
+    steps_ss << "(" << label_i << "," << label_j << ")" << std::endl;
 
     // Merge i+j -> i (and deactivate j)
     std::string new_label = label_i + "+" + label_j;
@@ -228,4 +233,10 @@ void compute_guidetree(const std::vector<Sequence>& sequences, const ScoringMatr
 
     active_count = std::count(active.begin(), active.end(), true);
   }
+
+  // Store results
+  result.similarity_matrix = matrix_ss.str();
+  result.guidetree_steps = steps_ss.str();
+
+  return result;
 }

@@ -23,4 +23,9 @@ class ScoringMatrix {
 
 int needleman_wunsch(const std::string& seq1, const std::string& seq2, const ScoringMatrix& mat);
 
-void compute_guidetree(const std::vector<Sequence>& sequences, const ScoringMatrix& mat);
+struct GuidetreeResult {
+  std::string similarity_matrix;
+  std::string guidetree_steps;
+};
+
+GuidetreeResult compute_guidetree(const std::vector<Sequence>& sequences, const ScoringMatrix& mat);
